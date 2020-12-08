@@ -27,7 +27,7 @@ import org.apache.beam.sdk.values.TypeDescriptor;
  * --stagingLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/staging \
  * --tempLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/temp \
  * --runner=DataflowRunner \
- * --bigQueryTableName= project.dataset.table \
+ * --bigQueryTableName= project:dataset.table \
  * --outputTopic=projects/${PROJECT_ID}/topics/${TOPIC_NAME}"
  * }
  * </pre>
@@ -91,7 +91,7 @@ public class BigQueryToPubSub {
             "TableRows -> PubSub Messages",
             MapElements.into(TypeDescriptor.of(String.class))
                 .via(
-                    (TableRow item) -> {
+                    (final TableRow item) -> {
                       // Data should be immutable from one PTransform to the next
                       final TableRow tableRow = item.clone();
                       tableRow.setFactory(Utils.getDefaultJsonFactory());
