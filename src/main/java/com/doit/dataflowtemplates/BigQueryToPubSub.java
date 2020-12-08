@@ -20,15 +20,15 @@ import org.apache.beam.sdk.values.TypeDescriptor;
  * <p>Example Usage:
  *
  * <pre>
- * {@code mvn compile exec:java \
- * -Dexec.mainClass=com.doit.dataflowtemplates.BigQueryToPubSub \
- * -Dexec.args=" \
+ * {@code ./gradlew clean shadowJar && \
+ * java -jar build/libs/dataflowtemplates-1.0-SNAPSHOT.jar
  * --project=${PROJECT_ID} \
+ * --region=${REGION} \
  * --stagingLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/staging \
  * --tempLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/temp \
  * --runner=DataflowRunner \
- * --bigQueryTableName= project:dataset.table \
- * --outputTopic=projects/${PROJECT_ID}/topics/${TOPIC_NAME}"
+ * --bigQueryTableName=project:dataset.table \
+ * --outputTopic=projects/${PROJECT_ID}/topics/${TOPIC_NAME}
  * }
  * </pre>
  */
