@@ -16,3 +16,8 @@ gradle-app.setting
 
 # Swap files
 *.swp
+
+# Editor files
+.idea
+.vscode
+

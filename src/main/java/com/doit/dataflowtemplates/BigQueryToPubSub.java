@@ -1,14 +1,18 @@
 package com.doit.dataflowtemplates;
 
+import com.google.api.services.bigquery.model.TableRow;
 import org.apache.beam.sdk.Pipeline;
-import org.apache.beam.sdk.PipelineResult;
-import org.apache.beam.sdk.io.TextIO;
+import org.apache.beam.sdk.PipelineResult.State;
+import org.apache.beam.sdk.io.gcp.bigquery.BigQueryIO;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.options.ValueProvider;
+import com.google.api.client.googleapis.util.Utils;
+import org.apache.beam.sdk.transforms.MapElements;
+import org.apache.beam.sdk.values.TypeDescriptor;
 
 /**
  * The {@code TextToPubsub} pipeline publishes records to
@@ -20,18 +24,19 @@ import org.apache.beam.sdk.options.ValueProvider;
  *
  * <pre>
  * {@code mvn compile exec:java \
-    -Dexec.mainClass=com.doit.dataflowtemplates. \
+    -Dexec.mainClass=com.doit.dataflowtemplates.BigQueryToPubSub \
     -Dexec.args=" \
     --project=${PROJECT_ID} \
     --stagingLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/staging \
     --tempLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/temp \
     --runner=DataflowRunner \
+    --bigQueryTableName= project.dataset.table \
     --outputTopic=projects/${PROJECT_ID}/topics/${TOPIC_NAME}"
  * }
  * </pre>
  *
  */
-public class BigQueryToPubsub {
+public class BigQueryToPubSub {
 
   /**
    * The custom options supported by the pipeline. Inherits
@@ -44,6 +49,12 @@ public class BigQueryToPubsub {
     @Required
     ValueProvider<String> getOutputTopic();
     void setOutputTopic(ValueProvider<String> value);
+
+    @Description("The name of the Big Query table in full "
+        + "The name should be in the format of project:dataset.table")
+    @Required
+    ValueProvider<String> getBigQueryTableName();
+    void setBigQueryTableName(ValueProvider<String> value);
   }
 
   /**
@@ -54,7 +65,6 @@ public class BigQueryToPubsub {
    * @param args  Arguments passed in from the command-line.
    */
   public static void main(String[] args) {
-
     // Parse the user options passed from the command-line
     final Options options = PipelineOptionsFactory
         .fromArgs(args)
@@ -70,20 +80,35 @@ public class BigQueryToPubsub {
    *
    * @param options The execution parameters.
    */
-  public static PipelineResult run(final Options options) {
+  public static State run(final Options options) {
     // Create the pipeline.
     final Pipeline pipeline = Pipeline.create(options);
 
     /*
      * Steps:
-     *  1) Read from Big Query source.
-     *  2) Write each text record to Pub/Sub
+     *  1) Read from Big Query source
+     *  2) Transform TableRows to a json string
+     *  3) Write each text record to Pub/Sub
      */
-    //pipeline
-        //TODO: Big Query with options goes here (one for with query and one for without)
-        //.apply("Write to PubSub", PubsubIO.writeStrings().to(options.getOutputTopic()));
+    pipeline
+          .apply(
+                "Read from BigQuery query",
+                BigQueryIO.readTableRows()
+                    .from(options.getBigQueryTableName())
+          )
+        .apply(
+            "TableRows -> PubSub Messages",
+            MapElements.into(TypeDescriptor.of(String.class))
+                .via(
+                    (TableRow item) -> {
+                      // Data should be immutable from one PTransform to the next
+                      final TableRow tableRow = item.clone();
+                      tableRow.setFactory(Utils.getDefaultJsonFactory());
+                      return tableRow.toString();
+                    }))
+        .apply("Write to PubSub", PubsubIO.writeStrings().to(options.getOutputTopic()));
 
-    return pipeline.run();
+    return pipeline.run().waitUntilFinish();
   }
 }
 
