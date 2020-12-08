@@ -1,6 +1,8 @@
 plugins {
+    id 'application'
     id 'java'
     id 'com.github.sherter.google-java-format' version '0.8'
+    id 'com.github.johnrengelman.shadow' version '5.2.0'
 }
 
 repositories {
@@ -29,14 +31,15 @@ dependencies {
     testImplementation 'junit:junit:4.13'
 }
 
+mainClassName = "com.doit.dataflowtemplates.BigQueryToPubSub"
 
-configurations.all {
+// Build Manifest
+jar {
+    manifest {
+        attributes 'Main-Class': mainClassName,
+                'Implementation-Version': getArchiveVersion(),
+                'Class-Path': configurations.runtimeClasspath.files.collect { "lib/$it.name" }.join(' ')
+    }
+    from(configurations.compileClasspath.collect { it.isDirectory() ? it : zipTree(it) }) {}
 }
 
-java {
-    withSourcesJar()
-}
-
-tasks.withType(JavaCompile) {
-    options.encoding = 'UTF-8'
-}
