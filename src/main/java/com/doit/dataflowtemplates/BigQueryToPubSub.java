@@ -1,5 +1,6 @@
 package com.doit.dataflowtemplates;
 
+import com.google.api.client.googleapis.util.Utils;
 import com.google.api.services.bigquery.model.TableRow;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.PipelineResult.State;
@@ -10,73 +11,65 @@ import org.apache.beam.sdk.options.PipelineOptions;
 import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.options.Validation.Required;
 import org.apache.beam.sdk.options.ValueProvider;
-import com.google.api.client.googleapis.util.Utils;
 import org.apache.beam.sdk.transforms.MapElements;
 import org.apache.beam.sdk.values.TypeDescriptor;
 
 /**
- * The {@code TextToPubsub} pipeline publishes records to
- * Cloud Pub/Sub from a set of files. The pipeline reads each
- * file row-by-row and publishes each record as a string message.
- * At the moment, publishing messages with attributes is unsupported.
+ * The {@code BigQueryToPubSub} pipeline publishes records to Cloud Pub/Sub from a Big Query Table.
  *
  * <p>Example Usage:
  *
  * <pre>
  * {@code mvn compile exec:java \
-    -Dexec.mainClass=com.doit.dataflowtemplates.BigQueryToPubSub \
-    -Dexec.args=" \
-    --project=${PROJECT_ID} \
-    --stagingLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/staging \
-    --tempLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/temp \
-    --runner=DataflowRunner \
-    --bigQueryTableName= project.dataset.table \
-    --outputTopic=projects/${PROJECT_ID}/topics/${TOPIC_NAME}"
+ * -Dexec.mainClass=com.doit.dataflowtemplates.BigQueryToPubSub \
+ * -Dexec.args=" \
+ * --project=${PROJECT_ID} \
+ * --stagingLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/staging \
+ * --tempLocation=gs://${PROJECT_ID}/dataflow/pipelines/${PIPELINE_FOLDER}/temp \
+ * --runner=DataflowRunner \
+ * --bigQueryTableName= project.dataset.table \
+ * --outputTopic=projects/${PROJECT_ID}/topics/${TOPIC_NAME}"
  * }
  * </pre>
- *
  */
 public class BigQueryToPubSub {
 
-  /**
-   * The custom options supported by the pipeline. Inherits
-   * standard configuration options.
-   */
+  /** The custom options supported by the pipeline. Inherits standard configuration options. */
   public interface Options extends PipelineOptions {
 
-    @Description("The name of the topic which data should be published to. "
-        + "The name should be in the format of projects/<project-id>/topics/<topic-name>.")
+    @Description(
+        "The name of the topic which data should be published to. "
+            + "The name should be in the format of projects/<project-id>/topics/<topic-name>.")
     @Required
     ValueProvider<String> getOutputTopic();
+
     void setOutputTopic(ValueProvider<String> value);
 
-    @Description("The name of the Big Query table in full "
-        + "The name should be in the format of project:dataset.table")
+    @Description(
+        "The name of the Big Query table in full "
+            + "The name should be in the format of project:dataset.table")
     @Required
     ValueProvider<String> getBigQueryTableName();
+
     void setBigQueryTableName(ValueProvider<String> value);
   }
 
   /**
-   * Main entry-point for the pipeline. Reads in the
-   * command-line arguments, parses them, and executes
-   * the pipeline.
+   * Main entry-point for the pipeline. Reads in the command-line arguments, parses them, and
+   * executes the pipeline.
    *
-   * @param args  Arguments passed in from the command-line.
+   * @param args Arguments passed in from the command-line.
    */
   public static void main(String[] args) {
     // Parse the user options passed from the command-line
-    final Options options = PipelineOptionsFactory
-        .fromArgs(args)
-        .withValidation()
-        .as(Options.class);
+    final Options options =
+        PipelineOptionsFactory.fromArgs(args).withValidation().as(Options.class);
 
     run(options);
   }
 
   /**
-   * Executes the pipeline with the provided execution
-   * parameters.
+   * Executes the pipeline with the provided execution parameters.
    *
    * @param options The execution parameters.
    */
@@ -91,11 +84,9 @@ public class BigQueryToPubSub {
      *  3) Write each text record to Pub/Sub
      */
     pipeline
-          .apply(
-                "Read from BigQuery query",
-                BigQueryIO.readTableRows()
-                    .from(options.getBigQueryTableName())
-          )
+        .apply(
+            "Read from BigQuery query",
+            BigQueryIO.readTableRows().from(options.getBigQueryTableName()))
         .apply(
             "TableRows -> PubSub Messages",
             MapElements.into(TypeDescriptor.of(String.class))
@@ -111,4 +102,3 @@ public class BigQueryToPubSub {
     return pipeline.run().waitUntilFinish();
   }
 }
-
