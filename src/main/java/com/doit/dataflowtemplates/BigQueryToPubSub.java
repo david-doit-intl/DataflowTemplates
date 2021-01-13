@@ -73,7 +73,7 @@ public class BigQueryToPubSub {
    *
    * @param options The execution parameters.
    */
-  public static State run(final Options options) {
+  public static void run(final Options options) {
     // Create the pipeline.
     final Pipeline pipeline = Pipeline.create(options);
 
@@ -86,7 +86,10 @@ public class BigQueryToPubSub {
     pipeline
         .apply(
             "Read from BigQuery query",
-            BigQueryIO.readTableRows().from(options.getBigQueryTableName()))
+            BigQueryIO.readTableRows()
+              .from(options.getBigQueryTableName())
+              .withTemplateCompatibility()
+              .withoutValidation())
         .apply(
             "TableRows -> PubSub Messages",
             MapElements.into(TypeDescriptor.of(String.class))
@@ -99,6 +102,6 @@ public class BigQueryToPubSub {
                     }))
         .apply("Write to PubSub", PubsubIO.writeStrings().to(options.getOutputTopic()));
 
-    return pipeline.run().waitUntilFinish();
+    pipeline.run();
   }
 }
